@@ -1,0 +1,5 @@
+%dw 2.0
+
+type auto_6b48f6b9_8e50_45b5_866b_588c237f2ad2_Input_Payload = {|  |} {"typeAlias": "Serializable",
+"typeId": "java.io.Serializable"}
+

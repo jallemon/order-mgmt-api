@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:spring="http://www.mulesoft.org/schema/mule/spring" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/spring http://www.mulesoft.org/schema/mule/spring/current/mule-spring.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+    <http:listener-config name="order-mgmt-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="order-mgmt-api-config" api="order-mgmt-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="bee96f69-4598-474e-8309-2f02ea1c6d69" entryTtl="365" entryTtlUnit="DAYS" />
+	<os:object-store name="orderid" doc:name="Object store" doc:id="3d77d699-1c2b-4164-a0c3-175007ee3134" entryTtl="365" entryTtlUnit="DAYS" />
+	<api-gateway:autodiscovery apiId="17893685" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="a587295a-0346-4fc6-a12f-af6138ecb6f9" flowRef="order-mgmt-api-main" />
+	<flow name="order-mgmt-api-main">
+        <http:listener config-ref="order-mgmt-api-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="order-mgmt-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="order-mgmt-api-console">
+        <http:listener config-ref="order-mgmt-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="order-mgmt-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform>
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\orders:order-mgmt-api-config">
+		<set-variable value="#[attributes.queryParams.userId]" doc:name="userid" doc:id="dbb66346-7768-4f24-8642-7fc304ebcc6a" variableName="userid"/>
+		<os:retrieve doc:name="getuserorders" doc:id="40d949b1-bec2-4640-b5b5-984c7e799ddf" objectStore="Object_store" key="#[vars.userid]">
+			<os:default-value ><![CDATA[#[{}]]]></os:default-value>
+		</os:retrieve>
+		<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+/*{
+  orders: [
+    {
+      order_id: "ORDER-437563756",
+      creation_date: "2016-03-30",
+      items: [
+        {
+          product_id: "PRODUCT-1",
+          quantity: 5
+        }, 
+        {
+          product_id: "PRODUCT-2",
+          quantity: 2
+        }
+      ]
+    }
+  ]
+}*/
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="post:\orders:application\json:order-mgmt-api-config">
+		<ee:transform doc:name="Transform Message" doc:id="d3064485-fdb2-4ef1-918d-a82242cf5241" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Transform Message" doc:id="4dc8ac9b-3dbb-400f-8167-f2908a0a6829" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Dates
+output application/json
+---
+payload ++ {"creation_date": today()}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="bde0a40d-7a6f-4e6f-8d51-e9e2beb3400a" variableName="newOrder"/>
+		<set-variable value="#[attributes.queryParams.userId]" doc:name="Copy_of_userid" doc:id="08a63a09-9ef8-4d61-8e5e-5a06cedb940f" variableName="userid" />
+		<os:retrieve doc:name="Retrieve" doc:id="b72b50e1-04b6-4a77-aa22-e9d99f741bd4" objectStore="Object_store" key="#[vars.userid]">
+			<os:default-value ><![CDATA[{}]]></os:default-value>
+		</os:retrieve>
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="50d8aa71-d323-4c51-8dc0-b3419ede1607" variableName="currentOrders"/>
+		<flow-ref doc:name="Flow Reference" doc:id="581e535a-ca08-478f-b2b3-2d3a751a1c4e" name="getNextOrderId"/>
+		<ee:transform doc:name="Transform Message" doc:id="68289dfd-7f7f-4004-83f4-268d28200fac" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.newOrder ++ {"order_id": vars.orderid}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<os:store doc:name="Store" doc:id="4b34b1c8-8654-42c6-b866-425dec371910" key="#[vars.userid]" objectStore="Object_store">
+			<os:value ><![CDATA[#[output application/json
+---
+flatten([vars.currentOrders, payload])]]]></os:value>
+		</os:store>
+		<ee:transform>
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+"order created successfully"]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+	<sub-flow name="getNextOrderId" doc:id="6b48f6b9-8e50-45b5-866b-588c237f2ad2" >
+		<os:retrieve doc:name="Retrieve" doc:id="edf41c4c-e7a3-4d96-8a31-96652fa38793" key="orderid" objectStore="orderid" target="orderid">
+			<os:default-value ><![CDATA[1]]></os:default-value>
+		</os:retrieve>
+		<os:store doc:name="Store" doc:id="25fecd1c-e724-45bf-bc4e-c2a82664e9d5" key="orderid" objectStore="orderid">
+			<os:value ><![CDATA[#[vars.orderid + 1]]]></os:value>
+		</os:store>
+	</sub-flow>
+</mule>
